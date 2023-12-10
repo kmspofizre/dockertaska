@@ -3,7 +3,6 @@ from flask import Flask
 import docker
 import os
 from dotenv import load_dotenv
-import stat
 
 load_dotenv()
 app = Flask(__name__)
@@ -34,9 +33,11 @@ def home():
 def create(name, port):
     with open('environment.txt', 'w') as f:
         f.write(f'123\n123\n{name}')
-    client.containers.create('flask', None, name=name,
-                             ports={f'{5000}/tcp': ('127.0.0.1', port)}, detach=True,
-                             )
+    cont = client.containers.run('flask', None, name=name,
+                                    ports={f'{5000}/tcp': ('127.0.0.1', port)}, detach=True,
+                                    )
+    cont.exec_run(f'flask chtext Меня зовут - {name}')
+    cont.stop()
 
 
 # cont1 = client.containers.run('alpine', 'sleep infinity',
@@ -61,7 +62,8 @@ def stop(name):
 @click.argument("name")
 def log(name):
     cont = client.containers.get(name)
-    pass
+    cont_logs = cont.logs()
+    print(cont_logs)
 
 
 @app.cli.command("send")
@@ -69,7 +71,8 @@ def log(name):
 @click.argument("message", nargs=-1)
 def send(name, message):
     message = ' '.join(list(message))
-    print(message)
+    cont = client.containers.get(name)
+    cont.exec_run(f'flask chtext {message}')
 
 
 if __name__ == '__main__':
