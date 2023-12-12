@@ -1,6 +1,7 @@
 import click
 from flask import Flask
 import docker
+import docker.errors
 import os
 from dotenv import load_dotenv
 
@@ -33,11 +34,14 @@ def home():
 def create(name, port):
     with open('environment.txt', 'w') as f:
         f.write(f'123\n123\n{name}')
-    cont = client.containers.run('flask', None, name=name,
-                                    ports={f'{5000}/tcp': ('127.0.0.1', port)}, detach=True,
-                                    )
-    cont.exec_run(f'flask chtext Меня зовут - {name}')
-    cont.stop()
+    try:
+        cont = client.containers.run('flask', None, name=name,
+                                        ports={f'{5000}/tcp': ('127.0.0.1', port)}, detach=True,
+                                        )
+        cont.exec_run(f'flask chtext Меня зовут - {name}')
+        cont.stop()
+    except docker.errors.ImageNotFound as imnf:
+        print(f"Образ не найден {imnf}")
 
 
 # cont1 = client.containers.run('alpine', 'sleep infinity',
@@ -47,23 +51,32 @@ def create(name, port):
 @app.cli.command("start")
 @click.argument("name")
 def start(name):
-    cont = client.containers.get(name)
-    cont.start()
+    try:
+        cont = client.containers.get(name)
+        cont.start()
+    except docker.errors.NotFound as e:
+        print("Контейнер не найден")
 
 
 @app.cli.command("stop")
 @click.argument("name")
 def stop(name):
-    cont = client.containers.get(name)
-    cont.stop()
+    try:
+        cont = client.containers.get(name)
+        cont.stop()
+    except docker.errors.NotFound as e:
+        print("Контейнер не найден")
 
 
 @app.cli.command("log")
 @click.argument("name")
 def log(name):
-    cont = client.containers.get(name)
-    cont_logs = cont.logs()
-    print(cont_logs)
+    try:
+        cont = client.containers.get(name)
+        cont_logs = cont.logs()
+        print(cont_logs)
+    except docker.errors.NotFound as e:
+        print("Контейнер не найден")
 
 
 @app.cli.command("send")
@@ -71,8 +84,11 @@ def log(name):
 @click.argument("message", nargs=-1)
 def send(name, message):
     message = ' '.join(list(message))
-    cont = client.containers.get(name)
-    cont.exec_run(f'flask chtext {message}')
+    try:
+        cont = client.containers.get(name)
+        cont.exec_run(f'flask chtext {message}')
+    except docker.errors.NotFound as e:
+        print("Контейнер не найден")
 
 
 if __name__ == '__main__':
