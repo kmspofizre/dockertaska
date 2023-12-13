@@ -68,6 +68,16 @@ def stop(name):
         print("Контейнер не найден")
 
 
+@app.cli.command("remove")
+@click.argument("name")
+def start(name):
+    try:
+        cont = client.containers.get(name)
+        cont.remove()
+    except docker.errors.NotFound as e:
+        print("Контейнер не найден")
+
+
 @app.cli.command("log")
 @click.argument("name")
 def log(name):
